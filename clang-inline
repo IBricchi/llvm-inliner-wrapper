@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+
+import sys
+import os
+import subprocess
+
+if(__name__ == "__main__"):
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    plugin_path = os.path.join(script_dir, "build", "plugin.so")
+
+    clang_path = "clang"
+    advice_path = None
+    cli_args = []
+    for i, a in enumerate(sys.argv[1:]):
+        if a.startswith("--clang="):
+            clang_path = a.split("=")[1]
+        elif a.startswith("--advice="):
+            advice_path = a.split("=")[1]
+        elif a == "--dot-format":
+            os.environ["INLINE_ADVISOR_DOT_FORMAT"] = "1"
+        elif a == "--":
+            cli_args = sys.argv[i+2:]
+            break
+
+    default_args = [
+        "-O3", "-g",
+        "-fpass-plugin=" + plugin_path,
+        "-mllvm", "--inline-priority-mode=top-down",
+        "-mllvm", "--enable-module-inliner",
+    ]
+
+    if advice_path != None:
+        print("Using advice file: " + advice_path)
+        os.environ["INLINE_ADVISOR_ADVICE_FILE"] = advice_path
+    
+    command = " ".join([clang_path] + default_args + cli_args)
+    print(command)
+
+    subprocess.run(command, shell=True)

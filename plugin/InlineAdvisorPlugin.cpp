@@ -111,9 +111,9 @@ InlineAdvisorPlugin::InlineAdvisorPlugin(Module &M,
   std::cout << "Original Call Graph:" << std::endl;
   printCallGraph(M);
 
-  // if environemnt variable INLINE_ADVISOR_MAP_FILE is set use it to call
+  // if environemnt variable INLINE_ADVISOR_ADVICE_FILE is set use it to call
   // parseAdviceFile
-  if (const char *filename = std::getenv("INLINE_ADVISOR_MAP_FILE")) {
+  if (const char *filename = std::getenv("INLINE_ADVISOR_ADVICE_FILE")) {
     parseAdviceFile(filename);
   }
 }
