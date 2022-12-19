@@ -85,8 +85,7 @@ static inline void printCallGraph(Module &M) {
               location =
                   caller + " -> " + callee + " [label=\"" + caller_loc + "\"]";
             } else {
-              location =
-                  caller + " -> " + callee + " @ " + caller_loc;
+              location = caller + " -> " + callee + " @ " + caller_loc;
             }
             std::cout << location << std::endl;
           }
@@ -111,6 +110,10 @@ InlineAdvisorPlugin::InlineAdvisorPlugin(Module &M,
   std::cout << "Original Call Graph:" << std::endl;
   printCallGraph(M);
 
+  for (auto &F : M) {
+    deadCallTracker[&F] = {&F, F.getName().str()};
+  }
+
   // if environemnt variable INLINE_ADVISOR_ADVICE_FILE is set use it to call
   // parseAdviceFile
   if (const char *filename = std::getenv("INLINE_ADVISOR_ADVICE_FILE")) {
@@ -121,6 +124,15 @@ InlineAdvisorPlugin::InlineAdvisorPlugin(Module &M,
 void InlineAdvisorPlugin::onPassExit(LazyCallGraph::SCC *SCC) {
   std::cout << "Final Call Graph:" << std::endl;
   printCallGraph(M);
+
+  // update deadCallTracker
+  for (auto &F : M) {
+    deadCallTracker.erase(&F);
+  }
+  std::cout << "Eliminated Calls:" << std::endl;
+  for (auto &[_, F] : deadCallTracker) {
+    std::cout << F.name << std::endl;
+  }
 
   std::cout << "Decisions:" << std::endl;
 
@@ -135,7 +147,7 @@ void InlineAdvisorPlugin::onPassExit(LazyCallGraph::SCC *SCC) {
             Function *callee = CB->getCalledFunction();
             DebugLoc loc = CB->getDebugLoc();
 
-            if (caller == decision.caller && callee == decision.callee &&
+            if (caller == decision.caller.fn && callee == decision.callee.fn &&
                 loc == decision.loc) {
               found = true;
               break;
@@ -148,8 +160,8 @@ void InlineAdvisorPlugin::onPassExit(LazyCallGraph::SCC *SCC) {
   }
 
   for (auto &decision : decisionsTaken) {
-    std::cout << decision.caller->getName().str() << " -> "
-              << decision.callee->getName().str() << " @ "
+    std::cout << decision.caller.name << " -> "
+              << decision.callee.name << " @ "
               << getLocString(decision.loc, false) << " : "
               << (decision.decision ? "inline" : "no-inline")
               << (decision.overridden
@@ -180,7 +192,7 @@ std::unique_ptr<InlineAdvice> InlineAdvisorPlugin::getAdviceImpl(CallBase &CB) {
   }
 
   decisionsTaken.push_back(
-      {caller, callee, loc, advice->isInliningRecommended(), overriden, false});
+      {{caller, caller->getName().str()}, {callee, callee->getName().str()}, loc, advice->isInliningRecommended(), overriden, false});
 
   return advice;
 }

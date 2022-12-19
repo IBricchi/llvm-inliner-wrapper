@@ -3,6 +3,8 @@
 #include "llvm/ADT/StringSet.h"
 #include "llvm/Analysis/InlineAdvisor.h"
 
+#include <unordered_map>
+
 namespace llvm {
 class CallBase;
 class Function;
@@ -25,15 +27,21 @@ private:
   DefaultInlineAdvisor DefaultAdvisor;
   std::unordered_map<std::string, bool> adviceMap;
 
+  struct FnInfo {
+    Function* fn;
+    std::string name;
+  };
+
   struct InlineDecision {
-    Function* caller;
-    Function* callee;
+    FnInfo caller;
+    FnInfo callee;
     DebugLoc loc;
     bool decision;
     bool overridden;
     bool status;
   };
   std::vector<InlineDecision> decisionsTaken;
+  std::map<Function*, FnInfo> deadCallTracker;
 
   void parseAdviceFile(std::string&& filename);
 };
